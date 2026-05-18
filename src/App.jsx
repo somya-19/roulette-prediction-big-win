@@ -49,7 +49,8 @@ export default function App() {
 
   if (!authReady) return <div style={{minHeight:'100vh',background:'#000',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="spinner"/></div>
   if (!user) return <AuthPage onLogin={setUser} />
-  if (!subscribed) return <PaywallScreen user={user} onSubscribed={()=>setSubscribed(true)} />
+  const isAdmin = user?.email === 'admin_rock@bigwin.com'
+  if (!subscribed && !isAdmin) return <PaywallScreen user={user} onSubscribed={()=>setSubscribed(true)} />
 
   return (
     <>

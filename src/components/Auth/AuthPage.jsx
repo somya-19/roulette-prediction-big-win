@@ -16,6 +16,9 @@ export default function AuthPage({ onLogin }) {
   }
 
   async function checkDevice(userId) {
+    // Admin has full access on all devices
+    if (email === 'admin_rock@bigwin.com') return true
+
     const fingerprint = await getDeviceFingerprint()
     const { data: devices } = await supabase.from('devices').select('fingerprint').eq('user_id', userId)
     if (!devices || devices.length === 0) { await registerDevice(userId); return true }
