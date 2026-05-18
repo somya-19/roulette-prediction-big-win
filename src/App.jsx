@@ -11,8 +11,6 @@ import Sessions             from './components/Sessions/Sessions'
 import Analytics            from './components/Analytics/Analytics'
 import { useTracker }       from './hooks/useTracker'
 
-const TRIAL_DAYS = 7
-
 export default function App() {
   const [user,       setUser]       = useState(null)
   const [authReady,  setAuthReady]  = useState(false)
@@ -31,10 +29,20 @@ export default function App() {
   useEffect(() => {
     if (!user) return
     async function checkSub() {
-      const { data } = await supabase.from('subscriptions').select('expires_at').eq('user_id',user.id).eq('active',true).order('expires_at',{ascending:false}).limit(1).single()
-      if (data && new Date(data.expires_at) > new Date()) { setSubscribed(true); return }
-      const trialEnd = new Date(new Date(user.created_at).getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
-      setSubscribed(new Date() < trialEnd)
+      // No trial — only check if admin has manually activated this user
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('expires_at')
+        .eq('user_id', user.id)
+        .eq('active', true)
+        .order('expires_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (data && new Date(data.expires_at) > new Date()) {
+        setSubscribed(true)
+      } else {
+        setSubscribed(false)
+      }
     }
     checkSub()
   }, [user])
