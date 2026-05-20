@@ -27,15 +27,15 @@ export function neighbourDist(prev, curr) {
 }
 
 export function getNeighbourInfo(n, origIdx, histArr) {
-  const prev1 = origIdx > 0 ? histArr[origIdx - 1] : null
-  const prev2 = origIdx > 1 ? histArr[origIdx - 2] : null
-  const prev3 = origIdx > 2 ? histArr[origIdx - 3] : null
-  if (prev1 === null)                              return { label:'∅',   bg:'#2a2a2a', text:'#888' }
-  if (n === prev1)                                 return { label:'R',   bg:'#d4af37', text:'#000' }
-  if (prev2 !== null && n === prev2)               return { label:'AR',  bg:'#e65100', text:'#fff' }
-  if (prev2 !== null && neighbourDist(prev2, n))   return { label:'2AN', bg:'#6a1b9a', text:'#fff' }
-  if (prev3 !== null && neighbourDist(prev3, n))   return { label:'3AN', bg:'#880e4f', text:'#fff' }
-  const d = neighbourDist(prev1, n)
+  const p1 = origIdx > 0 ? histArr[origIdx - 1] : null
+  const p2 = origIdx > 1 ? histArr[origIdx - 2] : null
+  const p3 = origIdx > 2 ? histArr[origIdx - 3] : null
+  if (p1 === null)                           return { label:'∅',   bg:'#2a2a2a', text:'#888' }
+  if (n === p1)                              return { label:'R',   bg:'#d4af37', text:'#000' }
+  if (p2 !== null && n === p2)               return { label:'AR',  bg:'#e65100', text:'#fff' }
+  if (p2 !== null && neighbourDist(p2, n))   return { label:'2AN', bg:'#6a1b9a', text:'#fff' }
+  if (p3 !== null && neighbourDist(p3, n))   return { label:'3AN', bg:'#880e4f', text:'#fff' }
+  const d = neighbourDist(p1, n)
   if (d === '1N') return { label:'1N', bg:'#1b5e20', text:'#fff' }
   if (d === '2N') return { label:'2N', bg:'#1a237e', text:'#fff' }
   if (d === '3N') return { label:'3N', bg:'#4a0080', text:'#fff' }
@@ -45,29 +45,28 @@ export function getNeighbourInfo(n, origIdx, histArr) {
 export function buildStats(history) {
   const v = history.filter(x => x !== 0)
   return {
-    totalSpins:   history.length,
-    red:          history.filter(x => REDS.includes(x)).length,
-    black:        v.filter(x => !REDS.includes(x)).length,
-    odd:          v.filter(x => x % 2 !== 0).length,
-    even:         v.filter(x => x % 2 === 0).length,
-    high:         v.filter(x => x >= 19).length,
-    low:          v.filter(x => x >= 1 && x <= 18).length,
-    zero:         history.filter(x => x === 0).length,
-    dozen1:       v.filter(x => x <= 12).length,
-    dozen2:       v.filter(x => x >= 13 && x <= 24).length,
-    dozen3:       v.filter(x => x >= 25).length,
-    row1:         v.filter(x => x % 3 === 1).length,
-    row2:         v.filter(x => x % 3 === 2).length,
-    row3:         v.filter(x => x % 3 === 0).length,
-    zeroVoisins:  history.filter(x => ZV_N.includes(x)).length,
-    voisins:      history.filter(x => V_N.includes(x) && !ZV_N.includes(x)).length,
-    orphelins:    history.filter(x => O_N.includes(x)).length,
-    tiers:        history.filter(x => T_N.includes(x)).length,
-    zone1:        history.filter(x => ZONE1.includes(x)).length,
-    zone2:        history.filter(x => ZONE2.includes(x)).length,
-    sector1:      history.filter(x => getSector(x) === 'S1').length,
-    sector2:      history.filter(x => getSector(x) === 'S2').length,
-    sector3:      history.filter(x => getSector(x) === 'S3').length,
-    sector4:      history.filter(x => getSector(x) === 'S4').length,
+    red:         history.filter(x => REDS.includes(x)).length,
+    black:       v.filter(x => !REDS.includes(x)).length,
+    odd:         v.filter(x => x % 2 !== 0).length,
+    even:        v.filter(x => x % 2 === 0).length,
+    high:        v.filter(x => x >= 19).length,
+    low:         v.filter(x => x >= 1 && x <= 18).length,
+    zero:        history.filter(x => x === 0).length,
+    dozen1:      v.filter(x => x <= 12).length,
+    dozen2:      v.filter(x => x >= 13 && x <= 24).length,
+    dozen3:      v.filter(x => x >= 25).length,
+    row1:        v.filter(x => x % 3 === 1).length,
+    row2:        v.filter(x => x % 3 === 2).length,
+    row3:        v.filter(x => x % 3 === 0).length,
+    zeroVoisins: history.filter(x => ZV_N.includes(x)).length,
+    voisins:     history.filter(x => V_N.includes(x) && !ZV_N.includes(x)).length,
+    orphelins:   history.filter(x => O_N.includes(x)).length,
+    tiers:       history.filter(x => T_N.includes(x)).length,
+    zone1:       history.filter(x => ZONE1.includes(x)).length,
+    zone2:       history.filter(x => ZONE2.includes(x)).length,
+    sector1:     history.filter(x => getSector(x) === 'S1').length,
+    sector2:     history.filter(x => getSector(x) === 'S2').length,
+    sector3:     history.filter(x => getSector(x) === 'S3').length,
+    sector4:     history.filter(x => getSector(x) === 'S4').length,
   }
 }

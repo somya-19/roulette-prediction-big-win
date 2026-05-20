@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
-import { supabase }      from './supabaseClient'
-import AuthPage          from './components/Auth/AuthPage'
-import Dashboard         from './components/Dashboard/Dashboard'
-import Wheel             from './components/Wheel/Wheel'
-import Board             from './components/Board/Board'
-import PatternLogs       from './components/PatternLogs/PatternLogs'
-import OccurrenceTable   from './components/OccurrenceTable/OccurrenceTable'
-import Sessions          from './components/Sessions/Sessions'
-import Analytics         from './components/Analytics/Analytics'
-import { useTracker }    from './hooks/useTracker'
+import { supabase }        from './supabaseClient'
+import AuthPage            from './components/Auth/AuthPage'
+import Dashboard           from './components/Dashboard/Dashboard'
+import Wheel               from './components/Wheel/Wheel'
+import Board               from './components/Board/Board'
+import PatternLogs         from './components/PatternLogs/PatternLogs'
+import OccurrenceTable     from './components/OccurrenceTable/OccurrenceTable'
+import Sessions            from './components/Sessions/Sessions'
+import Analytics           from './components/Analytics/Analytics'
+import { useTracker }      from './hooks/useTracker'
 
 export default function App() {
   const [user,      setUser]      = useState(null)
@@ -16,8 +16,9 @@ export default function App() {
   const [tab,       setTab]       = useState('occ')
   const [showModal, setShowModal] = useState(false)
 
-  const { history, sessionFields, setSessionFields, syncing, addNumber, undo, newSession, syncToCloud } = useTracker(user)
+  const { history, fields, setFields, syncing, addNumber, undo, newSession, syncToCloud } = useTracker(user)
 
+  // ── Auth listener ────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setUser(data?.session?.user || null)
@@ -39,70 +40,86 @@ export default function App() {
 
   return (
     <>
-      {/* Watermark — shows user email so leaks are traceable */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 99998,
-        pointerEvents: 'none', overflow: 'hidden',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transform: 'rotate(-30deg)',
-        opacity: 0.04, fontSize: '1.2rem', fontWeight: 900,
-        color: '#fff', whiteSpace: 'nowrap', userSelect: 'none',
-        letterSpacing: '2px',
+      {/* Watermark — user email stamped across screen for leak tracing */}
+      <div aria-hidden style={{
+        position:'fixed', inset:0, zIndex:99998, pointerEvents:'none',
+        overflow:'hidden', opacity:0.035, userSelect:'none',
       }}>
-        {Array.from({ length: 30 }).map((_, i) => (
-          <span key={i} style={{ position: 'absolute', top: `${(i % 6) * 18}%`, left: `${Math.floor(i / 6) * 22}%` }}>
+        {Array.from({ length: 30 }, (_, i) => (
+          <div key={i} style={{
+            position:'absolute',
+            top:`${(i % 7) * 15}%`,
+            left:`${Math.floor(i / 7) * 25 - 10}%`,
+            transform:'rotate(-30deg)',
+            fontSize:'0.9rem', fontWeight:900,
+            color:'#fff', whiteSpace:'nowrap',
+          }}>
             {user.email}
-          </span>
+          </div>
         ))}
       </div>
 
       {/* New Session Modal */}
       {showModal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div style={{ background:'#1a1a1a', border:'2px solid #d4af37', borderRadius:'10px', padding:'24px', maxWidth:'340px', width:'90%', textAlign:'center' }}>
-            <div style={{ fontSize:'1.1rem', fontWeight:900, color:'#d4af37', marginBottom:'10px' }}>🎰 Start New Session?</div>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.88)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#1a1a1a', border:'2px solid #d4af37', borderRadius:'10px', padding:'24px', maxWidth:'320px', width:'90%', textAlign:'center' }}>
+            <div style={{ fontSize:'1rem', fontWeight:900, color:'#d4af37', marginBottom:'10px' }}>🎰 New Session?</div>
             <div style={{ fontSize:'0.8rem', color:'#aaa', marginBottom:'18px', lineHeight:1.5 }}>
-              You have <strong>{history.length}</strong> spins recorded.<br />Save to cloud before starting fresh?
+              <strong>{history.length}</strong> spins recorded. Save before starting fresh?
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
-              <button className="btn" style={{ background:'#007bff' }} onClick={async () => { await syncToCloud(history, sessionFields); newSession(); setShowModal(false) }}>💾 Save &amp; New Session</button>
-              <button className="btn" style={{ background:'#444' }} onClick={() => { newSession(); setShowModal(false) }}>🗑 Discard &amp; New Session</button>
-              <button className="btn" style={{ background:'#222', border:'1px solid #555', color:'#aaa' }} onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn" style={{ background:'#007bff' }} onClick={async () => { await syncToCloud(history, fields); newSession(); setShowModal(false) }}>
+                💾 Save &amp; New Session
+              </button>
+              <button className="btn" style={{ background:'#444' }} onClick={() => { newSession(); setShowModal(false) }}>
+                🗑 Discard &amp; New Session
+              </button>
+              <button className="btn" style={{ background:'#111', border:'1px solid #444', color:'#aaa' }} onClick={() => setShowModal(false)}>
+                Cancel
+              </button>
             </div>
           </div>
         </div>
       )}
 
       <div className="main-wrapper">
+
         {/* ── Left Panel ── */}
         <div className="left-panel">
           <Dashboard history={history} />
+
           <div className="input-container">
             <Wheel
               history={history}
               onSelect={addNumber}
-              sessionFields={sessionFields}
-              onFieldChange={(k, v) => setSessionFields(f => ({ ...f, [k]: v }))}
+              fields={fields}
+              onFieldChange={(k, v) => setFields(f => ({ ...f, [k]: v }))}
             />
             <Board history={history} onSelect={addNumber} />
           </div>
+
           <PatternLogs history={history} />
+
           <div className="bottom-controls">
             <button className="btn" style={{ background:'#444' }} onClick={undo}>↩ UNDO</button>
             <button className="btn" style={{ background:'#1a6b2a' }} onClick={() => setShowModal(true)}>✚ NEW SESSION</button>
           </div>
+
           <div className="bottom-sync-row">
             <button className="btn" style={{ background:'#007bff', flex:1, padding:'12px' }}
-              onClick={() => syncToCloud(history, sessionFields)} disabled={syncing}>
+              onClick={() => syncToCloud(history, fields)} disabled={syncing}>
               {syncing ? '⏳ Syncing...' : '☁ SYNC TO CLOUD'}
             </button>
-            <button className="btn" style={{ background:'#d4af37', color:'#000', flex:1, padding:'12px' }} onClick={() => window.print()}>
+            <button className="btn" style={{ background:'#d4af37', color:'#000', flex:1, padding:'12px' }}
+              onClick={() => window.print()}>
               🖨 PRINT
             </button>
           </div>
-          <div style={{ padding:'8px 15px', background:'#0a0a0a', display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #222' }}>
-            <span style={{ fontSize:'0.65rem', color:'#555' }}>👤 {user.email}</span>
-            <button onClick={() => supabase.auth.signOut()} style={{ background:'none', border:'none', color:'#555', fontSize:'0.65rem', cursor:'pointer' }}>
+
+          <div style={{ padding:'8px 12px', background:'#0a0a0a', display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #1a1a1a' }}>
+            <span style={{ fontSize:'0.65rem', color:'#444' }}>👤 {user.email}</span>
+            <button onClick={() => supabase.auth.signOut()}
+              style={{ background:'none', border:'none', color:'#444', fontSize:'0.65rem', cursor:'pointer' }}>
               Sign out
             </button>
           </div>
@@ -121,8 +138,8 @@ export default function App() {
           {tab === 'sessions'  && <Sessions user={user} />}
           {tab === 'analytics' && <Analytics user={user} />}
         </div>
+
       </div>
     </>
   )
 }
-

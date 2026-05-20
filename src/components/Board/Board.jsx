@@ -10,7 +10,8 @@ export default function Board({ history, onSelect }) {
           [3, 2, 1].map(r => {
             const n = c * 3 + r
             return (
-              <div key={n} className={`board-cell${last === n ? ' selected' : ''}`}
+              <div key={n}
+                className={`board-cell${last === n ? ' selected' : ''}`}
                 style={{ background: REDS.includes(n) ? '#e63946' : '#1a1a1a' }}
                 onClick={() => onSelect(n)}>
                 {n}

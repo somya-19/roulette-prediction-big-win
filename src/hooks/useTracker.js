@@ -2,88 +2,87 @@ import { useState, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { buildStats } from '../utils/analysis'
 
-const LS_KEY    = 'goa_history'
-const LS_SES_ID = 'goa_current_session_id'
+const LS_HISTORY = 'goa_history'
+const LS_SES_ID  = 'goa_session_id'
 
-function load() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY)) || [] } catch { return [] }
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(LS_HISTORY)) || [] }
+  catch { return [] }
 }
 
 export function useTracker(user) {
-  const [history,          setHistory]          = useState(load)
-  const [currentSessionId, setCurrentSessionId] = useState(() => localStorage.getItem(LS_SES_ID))
-  const [sessionFields,    setSessionFields]    = useState({ casino:'', dealer:'', table:'', date:'', spinType:'' })
-  const [syncing,          setSyncing]          = useState(false)
+  const [history,    setHistory]    = useState(loadHistory)
+  const [sessionId,  setSessionId]  = useState(() => localStorage.getItem(LS_SES_ID))
+  const [fields,     setFields]     = useState({ casino:'', dealer:'', table:'', date:'', spinType:'' })
+  const [syncing,    setSyncing]    = useState(false)
 
-  const persist = useCallback((hist, sesId) => {
-    localStorage.setItem(LS_KEY, JSON.stringify(hist))
-    if (sesId) localStorage.setItem(LS_SES_ID, sesId)
+  const saveLocal = useCallback((hist, sid) => {
+    localStorage.setItem(LS_HISTORY, JSON.stringify(hist))
+    if (sid) localStorage.setItem(LS_SES_ID, sid)
   }, [])
 
   const addNumber = useCallback(n => {
     setHistory(prev => {
       const next = [...prev, n]
-      persist(next, currentSessionId)
+      saveLocal(next, sessionId)
       return next
     })
-  }, [currentSessionId, persist])
+  }, [sessionId, saveLocal])
 
   const undo = useCallback(() => {
     setHistory(prev => {
       if (!prev.length) return prev
       const next = prev.slice(0, -1)
-      persist(next, currentSessionId)
+      saveLocal(next, sessionId)
       return next
     })
-  }, [currentSessionId, persist])
+  }, [sessionId, saveLocal])
 
   const newSession = useCallback(() => {
     setHistory([])
-    setSessionFields({ casino:'', dealer:'', table:'', date:'', spinType:'' })
-    setCurrentSessionId(null)
-    localStorage.removeItem(LS_KEY)
+    setFields({ casino:'', dealer:'', table:'', date:'', spinType:'' })
+    setSessionId(null)
+    localStorage.removeItem(LS_HISTORY)
     localStorage.removeItem(LS_SES_ID)
   }, [])
 
-  const buildPayload = useCallback((hist, fields) => {
-    const stats = buildStats(hist)
-    const occurrence = {}
-    hist.forEach(n => { occurrence[String(n)] = (occurrence[String(n)] || 0) + 1 })
-    return {
-      user_id:      user?.id,
-      casino:       fields.casino,
-      dealer:       fields.dealer,
-      table_num:    fields.table,
-      date:         fields.date,
-      spin_type:    fields.spinType,
-      numbers:      hist,
-      total_spins:  hist.length,
-      stats,
-      occurrence,
-      is_draft:     false,
-      updated_at:   new Date().toISOString(),
-    }
-  }, [user])
-
-  const syncToCloud = useCallback(async (hist, fields) => {
-    if (!user) throw new Error('Not logged in')
-    if (!hist.length) throw new Error('No data to sync')
+  const syncToCloud = useCallback(async (hist, f) => {
+    if (!user) { alert('Not logged in'); return }
+    if (!hist.length) { alert('No spins to sync'); return }
     setSyncing(true)
     try {
-      const payload = buildPayload(hist, fields)
-      if (currentSessionId) {
-        const { error } = await supabase.from('sessions').update(payload).eq('id', currentSessionId)
+      const stats      = buildStats(hist)
+      const occurrence = {}
+      hist.forEach(n => { occurrence[String(n)] = (occurrence[String(n)] || 0) + 1 })
+      const payload = {
+        user_id:    user.id,
+        casino:     f.casino,
+        dealer:     f.dealer,
+        table_num:  f.table,
+        date:       f.date,
+        spin_type:  f.spinType,
+        numbers:    hist,
+        total_spins: hist.length,
+        stats,
+        occurrence,
+        updated_at: new Date().toISOString(),
+      }
+      if (sessionId) {
+        const { error } = await supabase.from('sessions').update(payload).eq('id', sessionId)
         if (error) throw error
       } else {
         const { data, error } = await supabase.from('sessions').insert(payload).select('id').single()
         if (error) throw error
-        setCurrentSessionId(data.id)
+        setSessionId(data.id)
         localStorage.setItem(LS_SES_ID, data.id)
       }
+      alert('✅ Synced successfully!')
+    } catch (e) {
+      alert('❌ Sync failed: ' + e.message)
     } finally {
       setSyncing(false)
     }
-  }, [user, currentSessionId, buildPayload])
+  }, [user, sessionId])
 
-  return { history, sessionFields, setSessionFields, currentSessionId, syncing, addNumber, undo, newSession, syncToCloud }
+  return { history, fields, setFields, syncing, addNumber, undo, newSession, syncToCloud }
 }

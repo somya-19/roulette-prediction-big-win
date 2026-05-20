@@ -11,11 +11,11 @@ export default function OccurrenceTable({ history }) {
       </div>
       {Array.from({ length: 37 }, (_, i) => {
         const count = history.filter(x => x === i).length
-        const spins = history.map((x,idx) => x===i ? idx+1 : null).filter(Boolean).join(', ')
+        const spins = history.map((x, idx) => x===i ? idx+1 : null).filter(Boolean).join(', ')
         return (
           <div className="table-row" key={i}>
             <div className="row-n" style={{ color: i===0?'#0f8':REDS.includes(i)?'#f44':'#fff' }}>{i}</div>
-            <div className="row-c">{count}</div>
+            <div className="row-c">{count || 0}</div>
             <div className="row-h">{count ? spins : '-'}</div>
           </div>
         )
