@@ -1,13 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../supabaseClient'
 import { getDeviceFingerprint, getDeviceInfo } from '../../utils/deviceFingerprint'
 
 const ADMIN_EMAIL = 'admin_rock@bigwin.com'
 
-export default function AuthPage({ onLogin, onError, onInfo, authError, authInfo, onClearMessages }) {
+// Module-level variable — survives component unmount/remount
+// When signIn succeeds then we detect wrong device, we store error here
+// New AuthPage instance reads it on mount
+let pendingError = ''
+let pendingInfo  = ''
+
+export default function AuthPage({ onLogin }) {
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+  const [info,     setInfo]     = useState('')
+
+  // On mount — pick up any pending message from previous instance
+  useEffect(() => {
+    if (pendingError) { setError(pendingError); pendingError = '' }
+    if (pendingInfo)  { setInfo(pendingInfo);   pendingInfo  = '' }
+  }, [])
 
   async function registerDevice(userId) {
     const fingerprint = await getDeviceFingerprint()
@@ -29,16 +43,15 @@ export default function AuthPage({ onLogin, onError, onInfo, authError, authInfo
       .from('devices').select('*').eq('user_id', userId)
 
     if (fetchErr) {
-      return { allowed: false, type: 'error', message: 'Device check failed: ' + fetchErr.message }
+      return { allowed: false, message: 'Device check failed. Contact admin.' }
     }
 
-    // CASE 1: First ever login — register device
+    // CASE 1: First login — register device
     if (!rows || rows.length === 0) {
       await registerDevice(userId)
       return {
         allowed: true,
-        type: 'first',
-        message: '✅ Device registered! Your account is now locked to this device. Logging in from any other device will lock your account permanently.'
+        info: '✅ This device is now registered to your account. Logging in from any other device will permanently lock your account.'
       }
     }
 
@@ -46,31 +59,33 @@ export default function AuthPage({ onLogin, onError, onInfo, authError, authInfo
     if (rows.some(r => r.locked === true)) {
       return {
         allowed: false,
-        type: 'locked',
-        message: '🔒 Your account has been locked due to a login attempt from another device. Please contact admin to unlock.'
+        message: '🔒 Your account is locked due to a login attempt from another device. Contact admin to unlock.'
       }
     }
 
-    // CASE 3: Same device — allow silently
+    // CASE 3: Same device — allow
     if (rows.some(r => r.fingerprint === fingerprint)) {
       return { allowed: true }
     }
 
-    // CASE 4: Different device — lock and block
+    // CASE 4: Different device — lock account
     await supabase.from('devices')
-      .update({ locked: true, lock_reason: 'Different device: ' + new Date().toLocaleString() })
+      .update({
+        locked:      true,
+        lock_reason: 'Different device: ' + new Date().toLocaleString()
+      })
       .eq('user_id', userId)
 
     return {
       allowed: false,
-      type: 'locked',
-      message: '⚠️ Login attempt from a different device detected! Your account has been locked for security. Contact admin to unlock.'
+      message: '⚠️ Login from another device detected! Your account has been locked. Contact admin to unlock.'
     }
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    onClearMessages()
+    setError('')
+    setInfo('')
     setLoading(true)
 
     try {
@@ -80,7 +95,7 @@ export default function AuthPage({ onLogin, onError, onInfo, authError, authInfo
       })
 
       if (signInErr) {
-        onError('Invalid email or password.')
+        setError('Invalid email or password.')
         setLoading(false)
         return
       }
@@ -88,22 +103,24 @@ export default function AuthPage({ onLogin, onError, onInfo, authError, authInfo
       const result = await checkDevice(data.user.id)
 
       if (!result.allowed) {
-        // Sign out and show error — error lives in App.jsx so survives remount
+        // ── KEY FIX: store error BEFORE signOut ──────────────────
+        // signOut triggers onAuthStateChange → App remounts AuthPage
+        // new AuthPage reads pendingError in useEffect above
+        pendingError = result.message
         await supabase.auth.signOut()
-        onError(result.message)
-        setLoading(false)
+        // AuthPage already remounted with the error at this point
         return
       }
 
-      // Show first-login info warning if needed
-      if (result.type === 'first') {
-        onInfo(result.message)
+      // First login — show info message after entering app
+      if (result.info) {
+        pendingInfo = result.info
       }
 
       onLogin(data.user)
 
     } catch (err) {
-      onError('Something went wrong. Try again.')
+      setError('Something went wrong. Try again.')
     } finally {
       setLoading(false)
     }
@@ -113,22 +130,36 @@ export default function AuthPage({ onLogin, onError, onInfo, authError, authInfo
     <div className="auth-page">
       <div className="auth-box">
         <div style={{ fontSize:'2.5rem', marginBottom:'8px' }}>🎰</div>
-        <div style={{ fontSize:'1.3rem', fontWeight:900, color:'#d4af37', marginBottom:'4px' }}>GOA ROULETTE</div>
+        <div style={{ fontSize:'1.3rem', fontWeight:900, color:'#d4af37', marginBottom:'4px' }}>
+          GOA ROULETTE
+        </div>
         <div style={{ fontSize:'0.7rem', color:'#555', marginBottom:'24px', letterSpacing:'1px', textTransform:'uppercase' }}>
           Authorised Access Only
         </div>
 
-        {/* Error message — red */}
-        {authError && (
-          <div style={{ background:'#b71c1c', color:'#fff', fontSize:'0.8rem', fontWeight:700, padding:'12px', borderRadius:'6px', marginBottom:'14px', lineHeight:1.6, textAlign:'left' }}>
-            {authError}
+        {/* Error — red */}
+        {error && (
+          <div style={{
+            background:'#b71c1c', color:'#fff',
+            fontSize:'0.8rem', fontWeight:700,
+            padding:'12px', borderRadius:'6px',
+            marginBottom:'14px', lineHeight:1.7,
+            textAlign:'left', border:'1px solid #ef5350'
+          }}>
+            {error}
           </div>
         )}
 
-        {/* Info message — blue (first login warning) */}
-        {authInfo && (
-          <div style={{ background:'#1565c0', color:'#fff', fontSize:'0.75rem', fontWeight:600, padding:'12px', borderRadius:'6px', marginBottom:'14px', lineHeight:1.6, textAlign:'left', border:'1px solid #42a5f5' }}>
-            {authInfo}
+        {/* Info — blue (first login warning) */}
+        {info && (
+          <div style={{
+            background:'#0d47a1', color:'#fff',
+            fontSize:'0.75rem', fontWeight:600,
+            padding:'12px', borderRadius:'6px',
+            marginBottom:'14px', lineHeight:1.7,
+            textAlign:'left', border:'1px solid #42a5f5'
+          }}>
+            {info}
           </div>
         )}
 
@@ -139,8 +170,8 @@ export default function AuthPage({ onLogin, onError, onInfo, authError, authInfo
             placeholder="Email address"
             value={email}
             autoComplete="off"
-            onChange={e => { setEmail(e.target.value); onClearMessages() }}
-            onKeyDown={e => { if (e.key==='Enter') document.getElementById('pwd').focus() }}
+            onChange={e => { setEmail(e.target.value); setError(''); setInfo('') }}
+            onKeyDown={e => { if (e.key === 'Enter') document.getElementById('pwd').focus() }}
             required
           />
           <input
@@ -150,7 +181,7 @@ export default function AuthPage({ onLogin, onError, onInfo, authError, authInfo
             placeholder="Password"
             value={password}
             autoComplete="off"
-            onChange={e => { setPassword(e.target.value); onClearMessages() }}
+            onChange={e => { setPassword(e.target.value); setError(''); setInfo('') }}
             required
           />
           <button className="auth-btn" type="submit" disabled={loading}>

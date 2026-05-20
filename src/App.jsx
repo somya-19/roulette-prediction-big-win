@@ -13,8 +13,8 @@ import { useTracker }      from './hooks/useTracker'
 export default function App() {
   const [user,       setUser]       = useState(null)
   const [authReady,  setAuthReady]  = useState(false)
-  const [authError,  setAuthError]  = useState('')   // persists across AuthPage unmount/remount
-  const [authInfo,   setAuthInfo]   = useState('')   // first-login warning
+  
+  
   const [tab,        setTab]        = useState('occ')
   const [showModal,  setShowModal]  = useState(false)
 
@@ -37,16 +37,7 @@ export default function App() {
     </div>
   )
 
-  if (!user) return (
-    <AuthPage
-      onLogin={setUser}
-      onError={msg => { setAuthError(msg); setAuthInfo('') }}
-      onInfo={msg  => { setAuthInfo(msg);  setAuthError('') }}
-      authError={authError}
-      authInfo={authInfo}
-      onClearMessages={() => { setAuthError(''); setAuthInfo('') }}
-    />
-  )
+  if (!user) return <AuthPage onLogin={setUser} />
 
   return (
     <>
