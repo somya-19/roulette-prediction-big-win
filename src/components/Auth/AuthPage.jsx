@@ -18,19 +18,48 @@ export default function AuthPage({ onLogin }) {
 
   async function checkDevice(userId) {
     // Admin can use any device
-    if (email.trim().toLowerCase() === ADMIN_EMAIL) return true
+    if (email.trim().toLowerCase() === ADMIN_EMAIL) return { allowed: true }
 
     const fingerprint = await getDeviceFingerprint()
-    const { data: devices } = await supabase
-      .from('devices').select('fingerprint').eq('user_id', userId)
 
-    // First login — register this device
+    // Check if account is already locked
+    const { data: devices } = await supabase
+      .from('devices')
+      .select('fingerprint, locked, lock_reason')
+      .eq('user_id', userId)
+
+    // No device registered yet — register and allow
     if (!devices || devices.length === 0) {
       await registerDevice(userId)
-      return true
+      return { allowed: true }
     }
 
-    return devices.some(d => d.fingerprint === fingerprint)
+    // Account is locked
+    if (devices.some(d => d.locked)) {
+      return {
+        allowed: false,
+        message: '🔒 Your account has been locked due to login attempt from another device. Contact admin to unlock.'
+      }
+    }
+
+    // Same device — allow
+    if (devices.some(d => d.fingerprint === fingerprint)) {
+      return { allowed: true }
+    }
+
+    // Different device — lock account immediately and block
+    await supabase
+      .from('devices')
+      .update({
+        locked: true,
+        lock_reason: `Login attempted from different device on ${new Date().toLocaleString()}`
+      })
+      .eq('user_id', userId)
+
+    return {
+      allowed: false,
+      message: '⚠️ Login from another device detected. Your account has been locked for security. Contact admin to unlock your account.'
+    }
   }
 
   async function handleSubmit(e) {
@@ -43,10 +72,10 @@ export default function AuthPage({ onLogin }) {
       })
       if (error) throw error
 
-      const allowed = await checkDevice(data.user.id)
-      if (!allowed) {
+      const result = await checkDevice(data.user.id)
+      if (!result.allowed) {
         await supabase.auth.signOut()
-        setError('This account is locked to another device. Contact support.')
+        setError(result.message)
         setLoading(false)
         return
       }
