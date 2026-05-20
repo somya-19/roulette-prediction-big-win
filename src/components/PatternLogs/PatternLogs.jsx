@@ -1,4 +1,4 @@
-import { REDS, ZV_N, V_N, O_N, T_N, SECTOR_COLORS } from '../../constants/roulette'
+import { REDS, ZV_N, V_N, O_N, T_N, SECTOR_COLORS, WHEEL_ORDER } from '../../constants/roulette'
 import { getZone, getUpDown, getSector, getNeighbourInfo } from '../../utils/analysis'
 
 const Tag  = ({ bg, border, children }) => <div className="tag" style={{ background:bg, border:border||`1px solid ${bg}` }}>{children}</div>
@@ -6,21 +6,113 @@ const NTag = ({ bg, text='#fff', num, label }) => <div className="ntag" style={{
 const Ball = ({ n, bg, text }) => <div className="mini-ball" style={{ background:bg, color:text }}>{n}</div>
 const Box  = ({ header, children }) => <div className="list-box"><div className="box-header">{header}</div><div className="flex-wrap">{children}</div></div>
 
+// Get 5 wheel neighbours of a number: 2 left, the number itself, 2 right
+function get5Neighbours(n) {
+  const idx = WHEEL_ORDER.indexOf(n)
+  if (idx < 0) return []
+  const len = WHEEL_ORDER.length
+  return [
+    WHEEL_ORDER[(idx - 2 + len) % len],
+    WHEEL_ORDER[(idx - 1 + len) % len],
+    WHEEL_ORDER[idx],
+    WHEEL_ORDER[(idx + 1) % len],
+    WHEEL_ORDER[(idx + 2) % len],
+  ]
+}
+
+function getBallColor(n) {
+  if (n === 0) return { bg:'#00ff88', text:'#000' }
+  if (REDS.includes(n)) return { bg:'#e63946', text:'#fff' }
+  return { bg:'#333', text:'#fff' }
+}
+
+// Vibrant alternating colours for hit history — not red
+const HIT_COLORS = [
+  '#FF9F43', // orange
+  '#54A0FF', // blue
+]
+
 export default function PatternLogs({ history }) {
   const rev    = [...history].reverse()
   const sorted = [...history].sort((a, b) => a - b)
 
+  // Last number and alternate last number
+  const lastNum    = history.length >= 1 ? history[history.length - 1] : null
+  const altLastNum = history.length >= 2 ? history[history.length - 2] : null
+
+  const lastNeighbours    = lastNum    !== null ? get5Neighbours(lastNum)    : []
+  const altLastNeighbours = altLastNum !== null ? get5Neighbours(altLastNum) : []
+
   return (
     <div className="scrollable-logs-zone">
 
+      {/* Hit History — vibrant orange / blue alternating */}
       <Box header="Hit History">
-        {rev.map((n, i) => <Ball key={i} n={n} bg={i%2===0?'#FFD700':'#00E676'} text="#000" />)}
+        {rev.map((n, i) => <Ball key={i} n={n} bg={HIT_COLORS[i % 2]} text="#000" />)}
       </Box>
 
+      {/* Neighbour of Last + Alternate Last */}
+      <div className="list-box">
+        <div className="box-header">Last Number Neighbours (2L · N · 2R)</div>
+
+        {lastNum !== null ? (
+          <>
+            <div style={{ fontSize:'0.65rem', color:'#aaa', marginBottom:'6px' }}>
+              Last spin: <strong style={{ color:'#d4af37' }}>{lastNum}</strong> — 5 wheel neighbours
+            </div>
+            <div className="flex-wrap" style={{ marginBottom:'10px' }}>
+              {lastNeighbours.map((n, i) => {
+                const c = getBallColor(n)
+                const isCenter = i === 2
+                return (
+                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'2px' }}>
+                    <div className="mini-ball" style={{
+                      background: c.bg, color: c.text,
+                      outline: isCenter ? '2px solid #ffd700' : 'none',
+                      boxShadow: isCenter ? '0 0 8px #ffd700' : 'none',
+                      transform: isCenter ? 'scale(1.15)' : 'scale(1)',
+                    }}>{n}</div>
+                    {isCenter && <span style={{ fontSize:'0.55rem', color:'#d4af37' }}>last</span>}
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        ) : (
+          <div style={{ color:'#444', fontSize:'0.75rem' }}>No spins yet</div>
+        )}
+
+        {altLastNum !== null && (
+          <>
+            <div style={{ fontSize:'0.65rem', color:'#aaa', marginBottom:'6px', marginTop:'4px' }}>
+              Alternate last: <strong style={{ color:'#42a5f5' }}>{altLastNum}</strong> — 5 wheel neighbours
+            </div>
+            <div className="flex-wrap">
+              {altLastNeighbours.map((n, i) => {
+                const c = getBallColor(n)
+                const isCenter = i === 2
+                return (
+                  <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'2px' }}>
+                    <div className="mini-ball" style={{
+                      background: c.bg, color: c.text,
+                      outline: isCenter ? '2px solid #42a5f5' : 'none',
+                      boxShadow: isCenter ? '0 0 8px #42a5f5' : 'none',
+                      transform: isCenter ? 'scale(1.15)' : 'scale(1)',
+                    }}>{n}</div>
+                    {isCenter && <span style={{ fontSize:'0.55rem', color:'#42a5f5' }}>alt</span>}
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Sorted */}
       <Box header="Sorted">
         {sorted.map((n, i) => {
-          const c = n===0 ? {bg:'#00ff88',t:'#000'} : REDS.includes(n) ? {bg:'#e63946',t:'#fff'} : {bg:'#1a1a1a',t:'#fff'}
-          return <Ball key={i} n={n} bg={c.bg} text={c.t} />
+          const c = n===0?{bg:'#00ff88',text:'#000'}:REDS.includes(n)?{bg:'#e63946',text:'#fff'}:{bg:'#1a1a1a',text:'#fff'}
+          return <Ball key={i} n={n} bg={c.bg} text={c.text} />
         })}
       </Box>
 
@@ -34,8 +126,8 @@ export default function PatternLogs({ history }) {
       <Box header="Up / Down Pattern">
         {rev.map((n, i) => {
           const ud = getUpDown(n)
-          const bg = ud==='UP' ? '#00695c' : ud==='DN' ? '#b71c1c' : '#333'
-          const border = ud==='UP' ? '1px solid #26a69a' : ud==='DN' ? '1px solid #ef5350' : '1px solid #555'
+          const bg = ud==='UP'?'#00695c':ud==='DN'?'#b71c1c':'#333'
+          const border = ud==='UP'?'1px solid #26a69a':ud==='DN'?'1px solid #ef5350':'1px solid #555'
           return <Tag key={i} bg={bg} border={border}>{ud==='UP'?'UP':ud==='DN'?'DN':'Z'}</Tag>
         })}
       </Box>
