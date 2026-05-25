@@ -47,7 +47,7 @@ export function useTracker(user) {
   }, [])
 
   const syncToCloud = useCallback(async (hist, f) => {
-    if (!user) { alert('Not logged in'); return }
+    if (!user) { alert('Login disabled in test mode — sync unavailable'); return }
     if (!hist.length) { alert('No spins to sync'); return }
     setSyncing(true)
     try {

@@ -13,10 +13,33 @@ export default function Dashboard({ history }) {
   const yCount = ynResults.filter(Boolean).length
   const nCount = ynResults.filter(x => !x).length
 
+  // 18 Nos Y/N — combined alt(4L+1+4R) + last(4L+1+4R)
+  const yn18Results = history.slice(2).map((n, i) => {
+    const s1 = new Set(getWheelNeighbours(history[i],   4))
+    const s2 = new Set(getWheelNeighbours(history[i+1], 4))
+    return new Set([...s1, ...s2]).has(n)
+  })
+  const y18Count = yn18Results.filter(Boolean).length
+  const n18Count = yn18Results.filter(x => !x).length
+
+  // Alternate 19 Nos Y/N (spin vs spin-2-ago's 17 nos)
+  const altYN    = history.slice(2).map((n, i) => new Set(getWheelNeighbours(history[i], 9)).has(n))
+  const altYCount = altYN.filter(Boolean).length
+  const altNCount = altYN.filter(x => !x).length
+
   const zvCnt = history.filter(x => ZV_N.includes(x)).length
   const vCnt  = history.filter(x => V_N.includes(x) && !ZV_N.includes(x)).length
   const oCnt  = history.filter(x => O_N.includes(x)).length
   const tCnt  = history.filter(x => T_N.includes(x)).length
+
+  // Prediction flags for blinking dashboard cards
+  const last3   = history.slice(-3)
+  const rowOf   = n => n === 0 ? null : (n % 3 === 0 ? 3 : n % 3)
+  const dozOf   = n => n === 0 ? null : Math.ceil(n / 12)
+  const rNums   = last3.map(rowOf)
+  const dNums   = last3.map(dozOf)
+  const rowPred = last3.length === 3 && rNums[0] !== null && rNums[0] === rNums[1] && rNums[1] === rNums[2]
+  const dozPred = last3.length === 3 && dNums[0] !== null && dNums[0] === dNums[1] && dNums[1] === dNums[2]
 
   const cards = [
     {
@@ -43,6 +66,18 @@ export default function Dashboard({ history }) {
       yCount, nCount,
     },
     {
+      lbl: 'Alt 19 Y / N',
+      val: null,
+      isAltYN: true,
+      altYCount, altNCount,
+    },
+    {
+      lbl: '18 Nos Y / N',
+      val: null,
+      is18YN: true,
+      y18Count, n18Count,
+    },
+    {
       lbl: 'UP / DN',
       val: `${history.filter(x => UP_NUMS.includes(x)).length} / ${history.filter(x => DOWN_NUMS.includes(x)).length}`,
       color: '#26a69a',
@@ -66,12 +101,14 @@ export default function Dashboard({ history }) {
     },
     {
       lbl: 'Dozen 1/2/3',
+      blink: dozPred,
       val: `${v.filter(x=>x<=12).length}/${v.filter(x=>x>=13&&x<=24).length}/${v.filter(x=>x>=25).length}`,
       color: '#d4af37',
       small: true,
     },
     {
       lbl: 'Row 1/2/3',
+      blink: rowPred,
       val: `${v.filter(x=>x%3===1).length}/${v.filter(x=>x%3===2).length}/${v.filter(x=>x%3===0).length}`,
       color: '#d4af37',
       small: true,
@@ -96,13 +133,27 @@ export default function Dashboard({ history }) {
   return (
     <div className="dashboard">
       {cards.map((c, i) => (
-        <div className="card" key={i}>
+        <div className="card" key={i} style={{
+          ...(c.blink ? { animation:'predictBlink 1s ease-in-out infinite', border:'1px solid #d4af37', boxShadow:'0 0 8px #d4af37' } : {})
+        }}>
           <span className="lbl">{c.lbl}</span>
           {c.isYN ? (
             <div className="val" style={{ fontSize:'0.82rem' }}>
               <span style={{ color:'#00E676' }}>{c.yCount}Y</span>
               <span style={{ color:'#555' }}> / </span>
               <span style={{ color:'#ef5350' }}>{c.nCount}N</span>
+            </div>
+          ) : c.is18YN ? (
+            <div className="val" style={{ fontSize:'0.82rem' }}>
+              <span style={{ color:'#00E676' }}>{c.y18Count}Y</span>
+              <span style={{ color:'#555' }}> / </span>
+              <span style={{ color:'#ef5350' }}>{c.n18Count}N</span>
+            </div>
+          ) : c.isAltYN ? (
+            <div className="val" style={{ fontSize:'0.82rem' }}>
+              <span style={{ color:'#00E676' }}>{c.altYCount}Y</span>
+              <span style={{ color:'#555' }}> / </span>
+              <span style={{ color:'#ef5350' }}>{c.altNCount}N</span>
             </div>
           ) : c.isVOT ? (
             <div className="val" style={{ fontSize:'0.78rem' }}>

@@ -31,13 +31,10 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  if (!authReady) return (
-    <div style={{ minHeight:'100vh', background:'#000', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div className="spinner" />
-    </div>
-  )
-
-  if (!user) return <AuthPage onLogin={setUser} />
+  // ── AUTH DISABLED FOR TESTING — re-enable when ready ──────────
+  // if (!authReady) return <div style={{minHeight:'100vh',background:'#000',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="spinner"/></div>
+  // if (!user) return <AuthPage onLogin={setUser} />
+  // ────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -86,8 +83,8 @@ export default function App() {
             <button className="btn" style={{ background:'#d4af37', color:'#000', flex:1, padding:'12px' }} onClick={() => window.print()}>🖨 PRINT</button>
           </div>
           <div style={{ padding:'8px 12px', background:'#0a0a0a', display:'flex', justifyContent:'space-between', alignItems:'center', borderTop:'1px solid #1a1a1a' }}>
-            <span style={{ fontSize:'0.65rem', color:'#444' }}>👤 {user.email}</span>
-            <button onClick={() => supabase.auth.signOut()} style={{ background:'none', border:'none', color:'#444', fontSize:'0.65rem', cursor:'pointer' }}>Sign out</button>
+            <span style={{ fontSize:'0.65rem', color:'#444' }}>👤 Test Mode</span>
+            <button onClick={() => {}} style={{ background:'none', border:'none', color:'#444', fontSize:'0.65rem', cursor:'pointer' }}>—</button>
           </div>
         </div>
 
