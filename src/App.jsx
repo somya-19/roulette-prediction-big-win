@@ -11,7 +11,7 @@ import Analytics           from './components/Analytics/Analytics'
 import { useTracker }      from './hooks/useTracker'
 
 export default function App() {
-  const [user,       setUser]       = useState(null)
+  const [user, setUser] = useState({ id: 'test-user', email: 'test@test.com' })
   const [authReady,  setAuthReady]  = useState(false)
   
   
