@@ -1,92 +1,163 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../supabaseClient'
 import { REDS } from '../../constants/roulette'
+import PatternLogs from '../PatternLogs/PatternLogs'
+import Dashboard from '../Dashboard/Dashboard'
+
+const selStyle = {
+  background:'#1a1a1a', border:'1px solid #444', borderRadius:'4px',
+  color:'#d4af37', fontSize:'0.75rem', padding:'6px 8px',
+  outline:'none', width:'100%'
+}
+const inpStyle = {
+  background:'#1a1a1a', border:'1px solid #444', borderRadius:'4px',
+  color:'#d4af37', fontSize:'0.75rem', padding:'6px 8px',
+  outline:'none', width:'100%'
+}
 
 export default function Sessions({ user }) {
-  const [sessions, setSessions] = useState([])
-  const [detail,   setDetail]   = useState(null)
-  const [loading,  setLoading]  = useState(false)
-  const [filters,  setFilters]  = useState({ casino:'', dealer:'', table:'', from:'', to:'' })
+  const [allSessions, setAllSessions] = useState([])
+  const [filtered,    setFiltered]    = useState([])
+  const [detail,      setDetail]      = useState(null)
+  const [loading,     setLoading]     = useState(false)
+  const [loaded,      setLoaded]      = useState(false)
 
-  async function search() {
-    setLoading(true); setDetail(null)
-    let q = supabase.from('sessions').select('*').eq('user_id', user.id).order('updated_at', { ascending:false }).limit(200)
-    if (filters.casino) q = q.eq('casino', filters.casino)
-    if (filters.dealer) q = q.eq('dealer', filters.dealer)
-    if (filters.table)  q = q.eq('table_num', filters.table)
-    if (filters.from)   q = q.gte('date', filters.from)
-    if (filters.to)     q = q.lte('date', filters.to)
-    const { data } = await q
-    setSessions(data || [])
-    setLoading(false)
+  const [selCasino, setSelCasino] = useState('')
+  const [selDealer, setSelDealer] = useState('')
+  const [selTable,  setSelTable]  = useState('')
+  const [dateFrom,  setDateFrom]  = useState('')
+  const [dateTo,    setDateTo]    = useState('')
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(500)
+      if (!error && data) { setAllSessions(data); setFiltered(data) }
+      setLoading(false)
+      setLoaded(true)
+    }
+    load()
+  }, [])
+
+  // Cascading options
+  const casinos = [...new Set(allSessions.map(s => s.casino).filter(Boolean))].sort()
+  const casinoFiltered = selCasino ? allSessions.filter(s => s.casino === selCasino) : allSessions
+  const dealers = [...new Set(casinoFiltered.map(s => s.dealer).filter(Boolean))].sort()
+  const dealerFiltered = selDealer ? casinoFiltered.filter(s => s.dealer === selDealer) : casinoFiltered
+  const tables = [...new Set(dealerFiltered.map(s => s.table_num).filter(Boolean))].sort()
+
+  function search() {
+    let result = allSessions
+    if (selCasino) result = result.filter(s => s.casino    === selCasino)
+    if (selDealer) result = result.filter(s => s.dealer    === selDealer)
+    if (selTable)  result = result.filter(s => s.table_num === selTable)
+    if (dateFrom)  result = result.filter(s => (s.date||'') >= dateFrom)
+    if (dateTo)    result = result.filter(s => (s.date||'') <= dateTo)
+    setFiltered(result); setDetail(null)
   }
 
-  const inp = (placeholder, key, type='text') => (
-    <input type={type} placeholder={placeholder} value={filters[key]}
-      onChange={e => setFilters(f => ({ ...f, [key]: e.target.value }))}
-      style={{ background:'#1a1a1a', border:'1px solid #444', borderRadius:'4px', color:'#d4af37', fontSize:'0.75rem', padding:'6px 8px', outline:'none', width:'100%' }} />
-  )
+  function clearFilters() {
+    setSelCasino(''); setSelDealer(''); setSelTable('')
+    setDateFrom(''); setDateTo('')
+    setFiltered(allSessions); setDetail(null)
+  }
 
-  if (detail) return (
-    <div>
-      <button className="btn" style={{ background:'#444', padding:'8px 12px', fontSize:'0.75rem', marginBottom:'10px' }} onClick={() => setDetail(null)}>← Back</button>
-      <div className="list-box">
-        <div className="sess-title">{detail.casino||'—'} — Table {detail.table_num||'—'}</div>
-        <div className="sess-meta">Dealer: {detail.dealer||'—'} | Date: {detail.date||'—'} | Spins: <b style={{color:'#d4af37'}}>{detail.total_spins||0}</b></div>
-      </div>
-      <div className="stat-grid">
-        {[
-          ['ZL / ZR',    `${detail.stats?.zone1||0} / ${detail.stats?.zone2||0}`],
-          ['ZV/V/O/T',   `${detail.stats?.zeroVoisins||0}/${detail.stats?.voisins||0}/${detail.stats?.orphelins||0}/${detail.stats?.tiers||0}`],
-          ['Red / Black',`${detail.stats?.red||0} / ${detail.stats?.black||0}`],
-          ['Odd / Even', `${detail.stats?.odd||0} / ${detail.stats?.even||0}`],
-          ['High / Low', `${detail.stats?.high||0} / ${detail.stats?.low||0}`],
-          ['Dozens',     `${detail.stats?.dozen1||0}/${detail.stats?.dozen2||0}/${detail.stats?.dozen3||0}`],
-        ].map(([l, v]) => (
-          <div className="stat-box" key={l}><span className="stat-lbl">{l}</span><span className="stat-val" style={{fontSize:'0.8rem'}}>{v}</span></div>
-        ))}
-      </div>
-      <div className="list-box">
-        <div className="box-header">Numbers (most recent first)</div>
-        <div className="flex-wrap">
-          {[...(detail.numbers||[])].reverse().map((n, i) => {
-            const bg = n===0?'#00ff88':REDS.includes(n)?'#e63946':'#1a1a1a'
-            return <div key={i} className="mini-ball" style={{background:bg,color:n===0?'#000':'#fff'}}>{n}</div>
-          })}
+  function onCasinoChange(val) { setSelCasino(val); setSelDealer(''); setSelTable('') }
+  function onDealerChange(val) { setSelDealer(val); setSelTable('') }
+
+  // ── Detail view — full analysis ──────────────────────────────
+  if (detail) {
+    const nums = detail.numbers || []
+    return (
+      <div>
+        {/* Back button */}
+        <button className="btn"
+          style={{ background:'#444', padding:'8px 12px', fontSize:'0.75rem', marginBottom:'8px' }}
+          onClick={() => setDetail(null)}>
+          ← Back to Sessions
+        </button>
+
+        {/* Session header */}
+        <div className="list-box" style={{ marginBottom:'8px' }}>
+          <div className="sess-title">{detail.casino||'—'} — Table {detail.table_num||'—'}</div>
+          <div className="sess-meta">
+            👤 {detail.dealer||'—'} &nbsp;|&nbsp; 📅 {detail.date||'—'} &nbsp;|&nbsp;
+            🎰 {detail.total_spins||0} spins &nbsp;|&nbsp; Spin: {detail.spin_type||'—'}
+          </div>
         </div>
-      </div>
-    </div>
-  )
 
+        {/* Dashboard stats for this session */}
+        <div style={{ marginBottom:'8px' }}>
+          <Dashboard history={nums} />
+        </div>
+
+        <PatternLogs history={nums} />
+      </div>
+    )
+  }
+
+  // ── Session list ─────────────────────────────────────────────
   return (
     <div>
       <div className="box-header" style={{ fontSize:'1rem' }}>Past Sessions</div>
+
       <div className="list-box" style={{ marginBottom:'10px' }}>
         <div className="box-header">Filters</div>
         <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-          {inp('Casino', 'casino')}
-          {inp('Dealer', 'dealer')}
-          {inp('Table',  'table')}
+          <select style={selStyle} value={selCasino} onChange={e => onCasinoChange(e.target.value)}>
+            <option value="">All Casinos</option>
+            {casinos.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select style={selStyle} value={selDealer} onChange={e => onDealerChange(e.target.value)}>
+            <option value="">All Dealers</option>
+            {dealers.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <select style={selStyle} value={selTable} onChange={e => setSelTable(e.target.value)}>
+            <option value="">All Tables</option>
+            {tables.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
           <div style={{ display:'flex', gap:'6px' }}>
-            {inp('From date', 'from', 'date')}
-            {inp('To date',   'to',   'date')}
+            <input type="date" style={inpStyle} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            <input type="date" style={inpStyle} value={dateTo}   onChange={e => setDateTo(e.target.value)} />
           </div>
-          <button className="btn" style={{ background:'#007bff', padding:'10px' }} onClick={search}>🔍 SEARCH</button>
+          <div style={{ display:'flex', gap:'6px' }}>
+            <button className="btn" style={{ background:'#007bff', flex:1, padding:'10px' }} onClick={search}>
+              🔍 SEARCH
+            </button>
+            <button className="btn" style={{ background:'#333', padding:'10px' }} onClick={clearFilters}>
+              ✕ CLEAR
+            </button>
+          </div>
         </div>
       </div>
-      {loading && <div style={{ color:'#888', textAlign:'center', padding:'20px' }}>Loading...</div>}
-      {!loading && sessions.map((s, i) => (
-        <div key={i} className="sess-card" onClick={() => setDetail(s)}>
+
+      {loading && <div style={{ color:'#888', textAlign:'center', padding:'20px' }}>Loading sessions...</div>}
+
+      {loaded && !loading && (
+        <div style={{ fontSize:'0.7rem', color:'#555', marginBottom:'8px', textAlign:'right' }}>
+          {filtered.length} session{filtered.length !== 1 ? 's' : ''} found
+        </div>
+      )}
+
+      {!loading && filtered.map((s, i) => (
+        <div key={i} className="sess-card" onClick={() => { setDetail(s) }}>
           <div className="sess-title">{s.casino||'—'} | Table: {s.table_num||'—'}</div>
-          <div className="sess-meta">👤 {s.dealer||'—'} | 📅 {s.date||'—'} | 🎰 {s.total_spins||0} spins</div>
+          <div className="sess-meta">
+            👤 {s.dealer||'—'} | 📅 {s.date||'—'} | 🎰 {s.total_spins||0} spins
+          </div>
           <div className="sess-meta" style={{ marginTop:'4px', color:'#42a5f5' }}>
             ZL:{s.stats?.zone1||0} ZR:{s.stats?.zone2||0} | R:{s.stats?.red||0} B:{s.stats?.black||0}
           </div>
         </div>
       ))}
-      {!loading && sessions.length === 0 && (
+
+      {loaded && !loading && filtered.length === 0 && (
         <div style={{ color:'#666', fontSize:'0.8rem', textAlign:'center', padding:'20px' }}>
-          Set filters and click Search
+          No sessions found
         </div>
       )}
     </div>

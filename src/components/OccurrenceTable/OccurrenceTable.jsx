@@ -1,6 +1,7 @@
 import { REDS } from '../../constants/roulette'
 
-export default function OccurrenceTable({ history }) {
+export default function OccurrenceTable({ history: rawHistory }) {
+  const history = rawHistory.filter(x => x !== null)
   return (
     <div>
       <div className="box-header" style={{ fontSize:'1rem' }}>Occurrence Table</div>

@@ -1,7 +1,7 @@
 import { REDS } from '../../constants/roulette'
 
 export default function Board({ history, onSelect }) {
-  const last = history.length ? history[history.length - 1] : null
+  const last = [...history].reverse().find(x => x !== null) ?? null
   return (
     <div className="board-wrap">
       <div className={`zero-cell${last === 0 ? ' selected' : ''}`} onClick={() => onSelect(0)}>0</div>

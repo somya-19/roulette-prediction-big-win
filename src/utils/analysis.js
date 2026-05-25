@@ -45,8 +45,14 @@ export function neighbourDist(a, b) {
 // (If a number qualifies for both R3 and A, R3 wins)
 // ────────────────────────────────────────────────────────────────
 export function getNeighbourInfo(n, origIdx, histArr) {
-  const prev1 = origIdx > 0 ? histArr[origIdx - 1] : null  // spin -1
-  const prev2 = origIdx > 1 ? histArr[origIdx - 2] : null  // spin -2
+  if (n === null) return { label:'DC', bg:'#2a2a2a', text:'#555' }
+  // Collect previous real numbers (skip null markers)
+  const realPrev = []
+  for (let i = origIdx - 1; i >= 0 && realPrev.length < 3; i--) {
+    if (histArr[i] !== null) realPrev.push(histArr[i])
+  }
+  const prev1 = realPrev[0] ?? null  // spin -1
+  const prev2 = realPrev[1] ?? null  // spin -2
 
   // No previous spin at all
   if (prev1 === null) return { label:'∅', bg:'#2a2a2a', text:'#888' }

@@ -18,7 +18,7 @@ export default function App() {
   const [tab,        setTab]        = useState('occ')
   const [showModal,  setShowModal]  = useState(false)
 
-  const { history, fields, setFields, syncing, addNumber, undo, newSession, syncToCloud } = useTracker(user)
+  const { history, fields, setFields, syncing, addNumber, addDealerChange, undo, newSession, syncToCloud } = useTracker(user)
 
   // ── AUTH DISABLED FOR TESTING ──────────────────────────────────
   // useEffect(() => {
@@ -72,6 +72,19 @@ export default function App() {
           <div className="input-container">
             <Wheel history={history} onSelect={addNumber} fields={fields} onFieldChange={(k,v) => setFields(f => ({...f,[k]:v}))} />
             <Board history={history} onSelect={addNumber} />
+
+            {/* Dealer Change button */}
+            <button
+              onClick={addDealerChange}
+              style={{
+                background:'#1a1a1a', border:'1px solid #d4af37',
+                borderRadius:'6px', color:'#d4af37',
+                fontWeight:700, fontSize:'0.8rem',
+                padding:'8px 20px', cursor:'pointer',
+                letterSpacing:'0.5px',
+              }}>
+              🔄 DEALER CHANGE
+            </button>
           </div>
           <PatternLogs history={history} />
           <div className="bottom-controls">

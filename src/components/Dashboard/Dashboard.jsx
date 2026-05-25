@@ -1,7 +1,8 @@
 import { REDS, ZV_N, V_N, O_N, T_N, ZONE1, ZONE2, UP_NUMS, DOWN_NUMS } from '../../constants/roulette'
 import { getSector, getNeighbourInfo, getWheelNeighbours } from '../../utils/analysis'
 
-export default function Dashboard({ history }) {
+export default function Dashboard({ history: rawHistory }) {
+  const history = rawHistory.filter(x => x !== null)
   const v = history.filter(x => x !== 0)
 
   // Neighbour label counts

@@ -21,6 +21,15 @@ export function useTracker(user) {
     if (sid) localStorage.setItem(LS_SES_ID, sid)
   }, [])
 
+  const addDealerChange = useCallback(() => {
+    setHistory(prev => {
+      if (!prev.length) return prev  // nothing to split
+      const next = [...prev, null]   // null = dealer change marker
+      saveLocal(next, sessionId)
+      return next
+    })
+  }, [sessionId, saveLocal])
+
   const addNumber = useCallback(n => {
     setHistory(prev => {
       const next = [...prev, n]
@@ -64,8 +73,7 @@ export function useTracker(user) {
         numbers:    hist,
         total_spins: hist.length,
         stats,
-        occurrence,
-        updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
       }
       if (sessionId) {
         const { error } = await supabase.from('sessions').update(payload).eq('id', sessionId)
@@ -84,5 +92,5 @@ export function useTracker(user) {
     }
   }, [user, sessionId])
 
-  return { history, fields, setFields, syncing, addNumber, undo, newSession, syncToCloud }
+  return { history, fields, setFields, syncing, addNumber, addDealerChange, undo, newSession, syncToCloud }
 }
