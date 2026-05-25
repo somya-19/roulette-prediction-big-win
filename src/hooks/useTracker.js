@@ -56,7 +56,7 @@ export function useTracker(user) {
   }, [])
 
   const syncToCloud = useCallback(async (hist, f) => {
-    if (!user) { alert('Login disabled in test mode — sync unavailable'); return }
+    // user may be test user — sync anyway
     if (!hist.length) { alert('No spins to sync'); return }
     setSyncing(true)
     try {
@@ -64,7 +64,7 @@ export function useTracker(user) {
       const occurrence = {}
       hist.forEach(n => { occurrence[String(n)] = (occurrence[String(n)] || 0) + 1 })
       const payload = {
-        user_id:    user.id,
+        user_id:    (user?.id && user.id !== 'test-user') ? user.id : null,
         casino:     f.casino,
         dealer:     f.dealer,
         table_num:  f.table,
@@ -78,11 +78,13 @@ export function useTracker(user) {
       if (sessionId) {
         const { error } = await supabase.from('sessions').update(payload).eq('id', sessionId)
         if (error) throw error
+        alert('✅ Session updated!')
       } else {
         const { data, error } = await supabase.from('sessions').insert(payload).select('id').single()
         if (error) throw error
         setSessionId(data.id)
         localStorage.setItem(LS_SES_ID, data.id)
+        alert('✅ Session saved!')
       }
       alert('✅ Synced successfully!')
     } catch (e) {
