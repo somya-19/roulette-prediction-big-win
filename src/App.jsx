@@ -20,16 +20,18 @@ export default function App() {
 
   const { history, fields, setFields, syncing, addNumber, undo, newSession, syncToCloud } = useTracker(user)
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data?.session?.user || null)
-      setAuthReady(true)
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user || null)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
+  // ── AUTH DISABLED FOR TESTING ──────────────────────────────────
+  // useEffect(() => {
+  //   supabase.auth.getSession().then(({ data }) => {
+  //     setUser(data?.session?.user || null)
+  //     setAuthReady(true)
+  //   })
+  //   const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+  //     setUser(session?.user || null)
+  //   })
+  //   return () => subscription.unsubscribe()
+  // }, [])
+  // ────────────────────────────────────────────────────────────
 
   // ── AUTH DISABLED FOR TESTING — re-enable when ready ──────────
   // if (!authReady) return <div style={{minHeight:'100vh',background:'#000',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="spinner"/></div>
