@@ -14,15 +14,6 @@ export default function Dashboard({ history: rawHistory }) {
   const yCount = ynResults.filter(Boolean).length
   const nCount = ynResults.filter(x => !x).length
 
-  // 18 Nos Y/N — combined alt(4L+1+4R) + last(4L+1+4R)
-  const yn18Results = history.slice(2).map((n, i) => {
-    const s1 = new Set(getWheelNeighbours(history[i],   4))
-    const s2 = new Set(getWheelNeighbours(history[i+1], 4))
-    return new Set([...s1, ...s2]).has(n)
-  })
-  const y18Count = yn18Results.filter(Boolean).length
-  const n18Count = yn18Results.filter(x => !x).length
-
   // Alternate 19 Nos Y/N (spin vs spin-2-ago's 17 nos)
   const altYN    = history.slice(2).map((n, i) => new Set(getWheelNeighbours(history[i], 9)).has(n))
   const altYCount = altYN.filter(Boolean).length
@@ -34,13 +25,96 @@ export default function Dashboard({ history: rawHistory }) {
   const tCnt  = history.filter(x => T_N.includes(x)).length
 
   // Prediction flags for blinking dashboard cards
-  const last3   = history.slice(-3)
+  const last2   = history.slice(-2)
   const rowOf   = n => n === 0 ? null : (n % 3 === 0 ? 3 : n % 3)
   const dozOf   = n => n === 0 ? null : Math.ceil(n / 12)
-  const rNums   = last3.map(rowOf)
-  const dNums   = last3.map(dozOf)
-  const rowPred = last3.length === 3 && rNums[0] !== null && rNums[0] === rNums[1] && rNums[1] === rNums[2]
-  const dozPred = last3.length === 3 && dNums[0] !== null && dNums[0] === dNums[1] && dNums[1] === dNums[2]
+  const rNums   = last2.map(rowOf)
+  const dNums   = last2.map(dozOf)
+  const rowPred = last2.length === 2 && rNums[0] !== null && rNums[0] === rNums[1]
+  const dozPred = last2.length === 2 && dNums[0] !== null && dNums[0] === dNums[1]
+
+  // Zone — 6 consecutive
+  const z6 = history.slice(-6).map(x => ZONE1.includes(x)?'ZL':ZONE2.includes(x)?'ZR':null)
+  const zonePred = z6.length===6 && z6[0]!==null && z6.every(z=>z===z6[0])
+
+  // Up/Down — 6 consecutive
+  const ud6 = history.filter(x=>UP_NUMS.includes(x)||DOWN_NUMS.includes(x)).slice(-6)
+  const udPred = ud6.length===6 && ud6.every(n=>(UP_NUMS.includes(n)===UP_NUMS.includes(ud6[0])))
+
+  // Red/Black — 7 consecutive
+  let rbStreak=0, rbLast=null
+  for(let i=history.length-1;i>=0;i--){
+    const cur=history[i]===0?null:(REDS.includes(history[i])?'R':'B')
+    if(cur===null) break
+    if(i===history.length-1) rbLast=cur
+    if(cur===rbLast) rbStreak++; else break
+  }
+  const rbPred = rbStreak >= 7
+
+  // Odd/Even — 7 consecutive
+  const vOE = history.filter(x=>x!==0)
+  let oeStreak=0, oeLast=null
+  for(let i=vOE.length-1;i>=0;i--){
+    const cur=vOE[i]%2!==0?'O':'E'
+    if(i===vOE.length-1) oeLast=cur
+    if(cur===oeLast) oeStreak++; else break
+  }
+  const oePred = oeStreak >= 7
+
+  // High/Low — 7 consecutive
+  let hlStreak=0, hlLast=null
+  for(let i=vOE.length-1;i>=0;i--){
+    const cur=vOE[i]>=19?'H':'L'
+    if(i===vOE.length-1) hlLast=cur
+    if(cur===hlLast) hlStreak++; else break
+  }
+  const hlPred = hlStreak >= 7
+
+  // 19 Nos — 3 consecutive N
+  const yn19 = history.filter(x=>x!==null).slice(1).map((n,i,arr)=>new Set(getWheelNeighbours(arr[i],9)).has(n))
+  const nos19Pred = yn19.slice(-3).length===3 && yn19.slice(-3).every(x=>!x)
+
+  // Alt 19 Nos — 3 consecutive N
+  const realH = history.filter(x=>x!==null)
+  const altYN2 = realH.slice(2).map((n,i)=>new Set(getWheelNeighbours(realH[i],9)).has(n))
+  const altNos19Pred = altYN2.slice(-3).length===3 && altYN2.slice(-3).every(x=>!x)
+
+  // Voisins — T+O streak 7
+  let toStreak=0
+  for(let i=history.length-1;i>=0;i--){
+    if(history[i]===null) break
+    const v=ZV_N.includes(history[i])?'ZV':V_N.includes(history[i])?'V':O_N.includes(history[i])?'O':T_N.includes(history[i])?'T':'?'
+    if(v==='T'||v==='O') toStreak++; else break
+  }
+  const voisinsPred = toStreak >= 7
+
+
+  // COLD PREDICTIONS — haven't hit for N spins
+  function spinsSince(predFn) {
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i] !== null && predFn(history[i])) return i === history.length - 1 ? 0 : history.length - 1 - i
+    }
+    return history.length
+  }
+
+  const r1Cold = spinsSince(n => n !== 0 && n % 3 === 1) >= 9
+  const r2Cold = spinsSince(n => n !== 0 && n % 3 === 2) >= 9
+  const r3Cold = spinsSince(n => n !== 0 && n % 3 === 0) >= 9
+  const d1Cold = spinsSince(n => n !== 0 && n <= 12) >= 9
+  const d2Cold = spinsSince(n => n !== 0 && n >= 13 && n <= 24) >= 9
+  const d3Cold = spinsSince(n => n !== 0 && n >= 25) >= 9
+  const zlCold = spinsSince(n => ZONE1.includes(n)) >= 9
+  const zrCold = spinsSince(n => ZONE2.includes(n)) >= 9
+  const upCold = spinsSince(n => UP_NUMS.includes(n)) >= 9
+  const dnCold = spinsSince(n => DOWN_NUMS.includes(n)) >= 9
+  const redCold = spinsSince(n => n !== 0 && REDS.includes(n)) >= 9
+  const blackCold = spinsSince(n => n !== 0 && !REDS.includes(n)) >= 9
+  const oddCold = spinsSince(n => n !== 0 && n % 2 !== 0) >= 9
+  const evenCold = spinsSince(n => n !== 0 && n % 2 === 0) >= 9
+  const highCold = spinsSince(n => n !== 0 && n >= 19) >= 9
+  const lowCold = spinsSince(n => n !== 0 && n <= 18) >= 9
+  const s13Cold = spinsSince(n => getSector(n) === 'S1' || getSector(n) === 'S3') >= 9
+  const s24Cold = spinsSince(n => getSector(n) === 'S2' || getSector(n) === 'S4') >= 9
 
   const cards = [
     {
@@ -62,70 +136,72 @@ export default function Dashboard({ history: rawHistory }) {
     },
     {
       lbl: '19 Nos Y / N',
+      blink: nos19Pred,
       val: null,
       isYN: true,
       yCount, nCount,
     },
     {
       lbl: 'Alt 19 Y / N',
+      blink: altNos19Pred,
       val: null,
       isAltYN: true,
       altYCount, altNCount,
     },
     {
-      lbl: '18 Nos Y / N',
-      val: null,
-      is18YN: true,
-      y18Count, n18Count,
-    },
-    {
       lbl: 'UP / DN',
+      blink: udPred || upCold || dnCold,
       val: `${history.filter(x => UP_NUMS.includes(x)).length} / ${history.filter(x => DOWN_NUMS.includes(x)).length}`,
       color: '#26a69a',
     },
     {
       lbl: 'ZL / ZR',
+      blink: zonePred || zlCold || zrCold,
       val: `${history.filter(x => ZONE1.includes(x)).length} / ${history.filter(x => ZONE2.includes(x)).length}`,
       color: '#42a5f5',
     },
     {
       lbl: 'ZV/V/O/T',
+      blink: voisinsPred,
       val: null,
       isVOT: true,
       zvCnt, vCnt, oCnt, tCnt,
     },
     {
-      lbl: 'S1/S2/S3/S4',
-      val: `${history.filter(x=>getSector(x)==='S1').length}/${history.filter(x=>getSector(x)==='S2').length}/${history.filter(x=>getSector(x)==='S3').length}/${history.filter(x=>getSector(x)==='S4').length}`,
-      color: '#e65100',
-      small: true,
+      lbl: 'S13 / S24',
+      blink: s13Cold || s24Cold,
+      val: `${history.filter(x=>getSector(x)==='S1'||getSector(x)==='S3').length} / ${history.filter(x=>getSector(x)==='S2'||getSector(x)==='S4').length}`,
+      color: '#f59e0b',
     },
     {
       lbl: 'Dozen 1/2/3',
-      blink: dozPred,
+      blink: dozPred || d1Cold || d2Cold || d3Cold,
       val: `${v.filter(x=>x<=12).length}/${v.filter(x=>x>=13&&x<=24).length}/${v.filter(x=>x>=25).length}`,
       color: '#d4af37',
       small: true,
     },
     {
       lbl: 'Row 1/2/3',
-      blink: rowPred,
+      blink: rowPred || r1Cold || r2Cold || r3Cold,
       val: `${v.filter(x=>x%3===1).length}/${v.filter(x=>x%3===2).length}/${v.filter(x=>x%3===0).length}`,
       color: '#d4af37',
       small: true,
     },
     {
       lbl: 'Odd / Even',
+      blink: oePred || oddCold || evenCold,
       val: `${v.filter(x=>x%2!==0).length} / ${v.filter(x=>x%2===0).length}`,
       color: '#9c27b0',
     },
     {
       lbl: 'High / Low',
+      blink: hlPred || highCold || lowCold,
       val: `${v.filter(x=>x>=19).length} / ${v.filter(x=>x>=1&&x<=18).length}`,
       color: '#ff9800',
     },
     {
       lbl: 'Red / Black',
+      blink: rbPred || redCold || blackCold,
       val: `${history.filter(x=>REDS.includes(x)).length} / ${v.filter(x=>!REDS.includes(x)).length}`,
       color: '#e63946',
     },
@@ -143,12 +219,6 @@ export default function Dashboard({ history: rawHistory }) {
               <span style={{ color:'#00E676' }}>{c.yCount}Y</span>
               <span style={{ color:'#555' }}> / </span>
               <span style={{ color:'#ef5350' }}>{c.nCount}N</span>
-            </div>
-          ) : c.is18YN ? (
-            <div className="val" style={{ fontSize:'0.82rem' }}>
-              <span style={{ color:'#00E676' }}>{c.y18Count}Y</span>
-              <span style={{ color:'#555' }}> / </span>
-              <span style={{ color:'#ef5350' }}>{c.n18Count}N</span>
             </div>
           ) : c.isAltYN ? (
             <div className="val" style={{ fontSize:'0.82rem' }}>

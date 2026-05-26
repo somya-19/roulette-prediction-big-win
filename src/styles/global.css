@@ -116,3 +116,150 @@ body { font-family: 'Segoe UI', sans-serif; background: #000; color: #fff; }
   50%  { opacity: 0.6; transform: scale(1.06); }
   100% { opacity: 1;   transform: scale(1); }
 }
+
+/* ═══════════════════════════ PRINT / PDF ═══════════════════════════ */
+@media print {
+  /* Force all backgrounds & colors to print exactly as on screen */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  /* Hide interactive / non-essential elements */
+  .bottom-controls,
+  .bottom-sync-row,
+  .tab-btn,
+  .auth-page,
+  [aria-hidden="true"],           /* watermark */
+  button { display: none !important; }
+
+  /* Reset body */
+  body {
+    background: #000 !important;
+    color: #fff !important;
+    font-size: 11px;
+  }
+
+  /* Main layout — stack left on top of right */
+  .main-wrapper {
+    display: block !important;
+    min-height: unset !important;
+  }
+
+  .left-panel {
+    border-right: none !important;
+    page-break-after: auto;
+  }
+
+  .right-panel {
+    background: #050505 !important;
+    border-top: 1px solid #d4af37;
+    page-break-before: auto;
+  }
+
+  /* ── Dashboard (counters) — pin it to the top of the print page ── */
+  .dashboard {
+    position: relative !important;   /* undo sticky so it sits inline at top */
+    top: auto !important;
+    z-index: auto !important;
+    background: #111 !important;
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;  /* wider layout for landscape */
+    gap: 4px !important;
+    padding: 8px !important;
+    page-break-inside: avoid;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid #444 !important;
+    border-radius: 4px !important;
+    padding: 5px 3px !important;
+  }
+
+  .lbl {
+    color: #aaa !important;
+    font-size: 0.5rem !important;
+  }
+
+  .val {
+    color: #d4af37 !important;
+    font-size: 0.85rem !important;
+    font-weight: 800 !important;
+  }
+
+  /* ── Pattern logs ── */
+  .scrollable-logs-zone {
+    background: #080808 !important;
+    overflow: visible !important;
+  }
+
+  .list-box {
+    background: #111 !important;
+    border: 1px solid #333 !important;
+    page-break-inside: avoid;
+  }
+
+  .box-header {
+    color: #d4af37 !important;
+    border-bottom: 1px solid #333 !important;
+  }
+
+  /* ── Board ── */
+  .board-wrap {
+    background: #003d21 !important;
+    border: 2px solid #005a32 !important;
+  }
+
+  .zero-cell {
+    background: #00ff88 !important;
+    color: #000 !important;
+  }
+
+  /* ── Occurrence table rows ── */
+  .row-n { background: #111 !important; }
+  .row-c { background: #1a1a1a !important; color: #00e5ff !important; }
+  .row-h { color: #d4af37 !important; }
+
+  /* ── Sessions / Analytics stat boxes ── */
+  .stat-box {
+    background: #1a1a1a !important;
+    border: 1px solid #333 !important;
+  }
+
+  .stat-lbl { color: #888 !important; }
+  .stat-val  { color: #d4af37 !important; }
+
+  .an-bar-track { background: #222 !important; }
+
+  /* ── Session cards ── */
+  .sess-card {
+    background: #1a1a1a !important;
+    border: 1px solid #333 !important;
+  }
+
+  .sess-title { color: #d4af37 !important; }
+  .sess-meta  { color: #888 !important; }
+
+  /* ── Tabs — hide tab buttons but keep content visible ── */
+  .tab-btn { display: none !important; }
+
+  /* Show all tab panels (not just the active one) in print */
+  [style*="display:none"],
+  [style*="display: none"] {
+    display: block !important;
+  }
+}
+
+/* Show all tab panels during print (override inline display:none) */
+@media print {
+  .print-show { display: block !important; }
+  .tab-bar-row { display: none !important; }
+}

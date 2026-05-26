@@ -104,16 +104,17 @@ export default function App() {
         </div>
 
         <div className="right-panel">
-          <div style={{ display:'flex', gap:'4px', marginBottom:'10px', position:'sticky', top:0, zIndex:100, background:'#050505', paddingBottom:'8px' }}>
+          <div className="tab-bar-row" style={{ display:'flex', gap:'4px', marginBottom:'10px', position:'sticky', top:0, zIndex:100, background:'#050505', paddingBottom:'8px' }}>
             {['occ','sessions','analytics'].map(t => (
               <button key={t} className={`tab-btn${tab===t?' active-tab':''}`} onClick={() => setTab(t)}>
                 {t==='occ'?'Occurrence':t==='sessions'?'Sessions':'Analytics'}
               </button>
             ))}
           </div>
-          {tab==='occ'       && <OccurrenceTable history={history} />}
-          {tab==='sessions'  && <Sessions user={user} />}
-          {tab==='analytics' && <Analytics user={user} />}
+          {/* Always render all panels; hide inactive ones — print @media shows all */}
+          <div style={{ display: tab==='occ' ? 'block' : 'none' }} className="print-show"><OccurrenceTable history={history} /></div>
+          <div style={{ display: tab==='sessions' ? 'block' : 'none' }} className="print-show"><Sessions user={user} /></div>
+          <div style={{ display: tab==='analytics' ? 'block' : 'none' }} className="print-show"><Analytics user={user} /></div>
         </div>
       </div>
     </>
