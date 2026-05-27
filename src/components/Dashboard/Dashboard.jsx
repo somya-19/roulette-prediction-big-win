@@ -25,21 +25,21 @@ export default function Dashboard({ history: rawHistory }) {
   const tCnt  = history.filter(x => T_N.includes(x)).length
 
   // Prediction flags for blinking dashboard cards
-  const last2   = history.slice(-2)
+  const last3   = history.slice(-3)
   const rowOf   = n => n === 0 ? null : (n % 3 === 0 ? 3 : n % 3)
   const dozOf   = n => n === 0 ? null : Math.ceil(n / 12)
-  const rNums   = last2.map(rowOf)
-  const dNums   = last2.map(dozOf)
-  const rowPred = last2.length === 2 && rNums[0] !== null && rNums[0] === rNums[1]
-  const dozPred = last2.length === 2 && dNums[0] !== null && dNums[0] === dNums[1]
+  const rNums   = last3.map(rowOf)
+  const dNums   = last3.map(dozOf)
+  const rowPred = last3.length === 3 && rNums[0] !== null && rNums.every(r => r === rNums[0])
+  const dozPred = last3.length === 3 && dNums[0] !== null && dNums.every(d => d === dNums[0])
 
-  // Zone — 6 consecutive
-  const z6 = history.slice(-6).map(x => ZONE1.includes(x)?'ZL':ZONE2.includes(x)?'ZR':null)
-  const zonePred = z6.length===6 && z6[0]!==null && z6.every(z=>z===z6[0])
+  // Zone — 5 consecutive
+  const z6 = history.slice(-5).map(x => ZONE1.includes(x)?'ZL':ZONE2.includes(x)?'ZR':null)
+  const zonePred = z6.length===5 && z6[0]!==null && z6.every(z=>z===z6[0])
 
-  // Up/Down — 6 consecutive
-  const ud6 = history.filter(x=>UP_NUMS.includes(x)||DOWN_NUMS.includes(x)).slice(-6)
-  const udPred = ud6.length===6 && ud6.every(n=>(UP_NUMS.includes(n)===UP_NUMS.includes(ud6[0])))
+  // Up/Down — 5 consecutive
+  const ud6 = history.filter(x=>UP_NUMS.includes(x)||DOWN_NUMS.includes(x)).slice(-5)
+  const udPred = ud6.length===5 && ud6.every(n=>(UP_NUMS.includes(n)===UP_NUMS.includes(ud6[0])))
 
   // Red/Black — 7 consecutive
   let rbStreak=0, rbLast=null
